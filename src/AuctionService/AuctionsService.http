@@ -1,0 +1,6 @@
+@AuctionsService_HostAddress = http://localhost:8001
+
+GET {{AuctionsService_HostAddress}}/api/auctions
+Accept: application/json
+
+###
