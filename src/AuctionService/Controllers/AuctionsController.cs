@@ -1,8 +1,8 @@
 using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
-namespace AuctionService.Controller
+namespace AuctionService.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -19,13 +19,20 @@ namespace AuctionService.Controller
         private IQueryable<Auction> Auctions(bool isTracking = true) => (IQueryable<Auction>)(isTracking ? _context.Auctions : _context.Auctions.AsNoTracking());
 
         [HttpGet]
-        public async Task<ActionResult<List<AuctionDto>>> GetAll()
+        public async Task<ActionResult<List<AuctionDto>>> GetAll(string date)
         {
-            var auctions = await Auctions(isTracking: false).Include(auction => auction.Item)
-                .OrderBy(auction => auction.Item.Make)
-                .ToListAsync();
+            var query = Auctions(isTracking: false).OrderBy(auction => auction.Item.Make).AsQueryable();
 
-            return _mapper.Map<List<AuctionDto>>(auctions);
+            if (!string.IsNullOrEmpty(date))
+            {
+                if (!DateTime.TryParse(date, out var dateValue)) return BadRequest("Invalid date");
+
+                query = query.Where(auction => auction.UpdatedAt.CompareTo(dateValue.ToUniversalTime()) > 0);
+            }
+
+            var result = await query.ProjectTo<AuctionDto>(_mapper.ConfigurationProvider).ToListAsync();
+
+            return result;
         }
 
         [HttpGet("{id}")]
